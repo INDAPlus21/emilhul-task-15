@@ -17,33 +17,33 @@ fn main() {
 
     if values.len() == 0 { return; }
 
-    let (n, _) = (values[0], values[1]);
+    let (n, m) = (values[0], values[1]);
 
-    if n == 0 { return; }
+    if n == 0 || m == 0 { return; }
 
     // Create Almost Union Find datastructure of size n
     let mut auf = AlmostUnionFind::new(n);
 
     // For remaining lines in input
-    for _line in lines {
-        if _line.len() != 0 {
-            // Split up line at spaces
-            let line =_line
-            .split_whitespace()
-            .map(|_value| _value.parse::<usize>().ok().unwrap())
-            .collect::<Vec<usize>>();
-        
-            // Match first number to function
-            match line[0] {
-                1 => auf.union(line[1], line[2]),
-                2 => auf._move(line[1], line[2]),
-                3 => {
-                    let (size, sum) = auf._return(line[1]);
-                    println!("{} {}", size, sum);
-                },
-                _ => ()
-            }
+    for _ in 0..m {
+        // Split up line at spaces
+        let line = lines.next().unwrap()
+        .split_whitespace()
+        .map(|_value| _value.parse::<usize>().ok().unwrap())
+        .collect::<Vec<usize>>();
+    
+        // Match first number to function
+        match line[0] {
+            1 => auf.union(line[1], line[2]),
+            2 => auf._move(line[1], line[2]),
+            3 => {
+                let (size, sum) = auf._return(line[1]);
+                println!("{} {}", size, sum);
+            },
+            _ => ()
         }
+
+        eprintln!("{:?}\n", auf);
     }
 }
 
