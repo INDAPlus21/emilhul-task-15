@@ -49,111 +49,92 @@ fn main() {
 /// ## AlmostUnionFind
 /// A datastructure that's almost union finde :)
 struct AlmostUnionFind {
-    /// Number of sets in the Almost Union-Find
-    num_sets: usize,
     /// The size of each set in the Almost Union-Find
     set_size: Vec<usize>,
-    /// The id of each element in the Almost Union-Find.
-    /// element_id.0 is index in outer vector and element_id.1 is index in outer vector.
-    element_id: Vec<(usize, usize)>,
-    /// Representation of the Almost Union-Find as a vector of vectors
-    sets: Vec<Vec<usize>>
+    /// The id of each set in the Almost Union-Find.
+    /// The id is the parent of i, if set_id[i] = i, i is a root node
+    set_id: Vec<usize>,
+
+    set_sum: Vec<usize>,
 }
 
 impl AlmostUnionFind {
     /// ## new
     /// Creates a new AlmostUnionFind of size n
     fn new(n: usize) -> AlmostUnionFind {
-        let num_sets = n;
-        let set_size = vec![1;n];
-        let mut element_id = Vec::with_capacity(n);
-        let mut sets = Vec::with_capacity(n);
+        let set_size = vec![1;2*(n+1)];
+        let mut set_id = vec![0;2*(n+1)];
+        let mut set_sum = vec![0;2*(n+1)];
 
-        for i in 0..n {
-            element_id.push((i, 0));
-            sets.push(vec![i+1])
+        let mut j = n+1;
+
+        for i in 1..=n {
+            set_id[i] = j;
+            set_id[j] = j;
+            set_sum[j] = i;
+            j += 1;
         }
 
-        AlmostUnionFind { num_sets, set_size, element_id, sets }
+        AlmostUnionFind {  set_size, set_id, set_sum }
+    }
+
+    /// ## find
+    /// Helper function that finds the root for a set. Also compresses the path there.
+    fn find(&mut self, mut p: usize) -> usize {
+        let mut root: usize = p;
+
+        // Follow chain until root. Root is node with set_id equal to itself.
+        while root != self.set_id[root] {
+            root = self.set_id[root];
+        }
+
+        // Go back through chain compressing path
+        while p != root {
+            let next: usize = self.set_id[p];
+            self.set_id[p] = root;
+            p = next;
+        }
+        
+        root
     }
 
     /// ## union
     /// Union the sets containing p and q
     fn union(&mut self, p: usize, q: usize) {
-        let _p = self.element_id[p-1];
-        let _q = self.element_id[q-1]; 
+        let root_p = self.find(p);
+        let root_q = self.find(q); 
 
         // If they're not already in the same set
-        if _p.0 != _q.0 {
-            // Move the smaler set into the larger one.
-            if self.set_size[_p.0] < self.set_size[_q.0] {
-                // Switch id for all elements in the set
-                for i in &self.sets[_p.0] {
-                    self.element_id[*i-1] = (_q.0, self.set_size[_q.0] + self.element_id[*i-1].1);
-                }
-                // Change set sizes
-                self.set_size[_q.0] += self.set_size[_p.0];
-                self.set_size[_p.0] = 0;
-
-                // Move append elements to other set. Then clear first set
-                let mut _temp = self.sets[_q.0].clone();
-                self.sets[_p.0].append(&mut _temp);
-                self.sets[_q.0] = vec![];
-            } else {
-                // Same as above but with _p and _q switched
-                for i in &self.sets[_q.0] {
-                    self.element_id[*i-1] = (_p.0, self.set_size[_p.0] + self.element_id[*i-1].1);
-                }
-                self.set_size[_p.0] += self.set_size[_q.0];
-                self.set_size[_q.0] = 0;
-                let mut _temp = self.sets[_q.0].clone();
-                self.sets[_p.0].append(&mut _temp);
-                self.sets[_q.0] = vec![];
-            }
-
-            self.num_sets -= 1;
+        if root_p != root_q {
+            self.set_size[root_q] += self.set_size[root_p];
+            self.set_sum[root_q] += self.set_sum[root_p];
+            self.set_id[root_p] = root_q;
         }
     }
 
     /// ## move
     /// Moves element p into the set containing q
     fn _move(&mut self, p: usize, q: usize) {
-        let _p = self.element_id[p-1];
-        let _q = self.element_id[q-1]; 
+        let root_p = self.find(p);
+        let root_q = self.find(q);
 
         // If they're not already in the same set
-        if _p.0 != _q.0 {
-            // Swap remove is fast, and oreder doesn't matter
-            let _temp = self.sets[_p.0].swap_remove(_p.1);
-            self.sets[_q.0].push(_temp);
-            // Update element id for p
-            self.element_id[p-1] = (_q.0, self.set_size[_q.0]);
+        if root_p != root_q {
+            self.set_size[root_q] += 1;
+            self.set_size[root_p] -= 1;
+            self.set_sum[root_q] += p;
+            self.set_sum[root_p] -= p;
 
-
-            // Update set_sizes
-            self.set_size[_q.0] += 1;
-            self.set_size[_p.0] -= 1;
-
-            // Cleanup
-            if self.set_size[_p.0] == 0 {
-                // If empty that set is effectively removed
-                self.num_sets -= 1;
-            } else {
-                // If not empty update the index of the previously last element in the set. 
-                let last_elem = self.sets[_p.0][self.set_size[_p.0]-1];
-                // Since swap remove was used switch to p's old index
-                self.element_id[last_elem-1] = (_p.0, _p.1);
-            }
+            self.set_id[p] = root_q;
         }
     }
 
     /// ## return
     /// Returns the size of the set containing p as well as the sum of all elements in that set.
     fn _return(&mut self, p: usize) -> (usize, usize) {
-        let _p = self.element_id[p-1];
-        let size = self.set_size[_p.0];
-        let sum = self.sets[_p.0].iter().sum();
-
+        let root_p = self.find(p);
+        let size = self.set_size[root_p];
+        let sum = self.set_sum[root_p];
         (size, sum)
     }
 }
